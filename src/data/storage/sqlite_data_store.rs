@@ -1,4 +1,5 @@
 use futures::FutureExt;
+use rand::{RngExt, SeedableRng};
 
 use crate::data::{
     objects::{item::Item, order::Order},
@@ -94,8 +95,9 @@ impl DataStore for SqliteDataStore {
         Result<Vec<crate::data::objects::order::Order>, crate::utils::errors::Error>,
     > {
         async move {
+            let limit = args.limit.unwrap_or(100) as i64;
             let orders: Vec<Order> = match (args.order_state, args.table_id) {
-                (crate::data::storage::data_store::SearchOrderState::Open, None) => sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NULL")
+                (crate::data::storage::data_store::SearchOrderState::Open, None) => sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NULL LIMIT ?1", limit)
                     .fetch_all(&self.connection_pool)
                     .await?.into_iter().map(|item| Order { 
                         id: item.id as IdType, 
@@ -108,7 +110,7 @@ impl DataStore for SqliteDataStore {
                     
                 (crate::data::storage::data_store::SearchOrderState::Open, Some(table_id)) => {
                     let id = table_id as i64;
-                    sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NULL AND table_id = ?1", id)
+                    sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NULL AND table_id = ?1 LIMIT ?2", id, limit)
                     .fetch_all(&self.connection_pool)
                     .await?.into_iter().map(|item| Order { 
                         id: item.id as IdType, 
@@ -119,7 +121,7 @@ impl DataStore for SqliteDataStore {
                         paid_at: item.paid_at.map(|item| chrono::DateTime::<chrono::Utc>::from_timestamp(item, 0).unwrap().naive_utc()) 
                     }).collect()
                 },
-                (crate::data::storage::data_store::SearchOrderState::Paid, None) => sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NOT NULL")
+                (crate::data::storage::data_store::SearchOrderState::Paid, None) => sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NOT NULL LIMIT ?1", limit)
                     .fetch_all(&self.connection_pool)
                     .await?.into_iter().map(|item| Order { 
                         id: item.id as IdType, 
@@ -131,7 +133,7 @@ impl DataStore for SqliteDataStore {
                     }).collect(),
                 (crate::data::storage::data_store::SearchOrderState::Paid, Some(table_id)) => {
                     let id = table_id as i64;
-                    sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NOT NULL AND table_id = ?1", id)
+                    sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NOT NULL AND table_id = ?1 LIMIT ?2", id, limit)
                     .fetch_all(&self.connection_pool)
                     .await?.into_iter().map(|item| Order { 
                         id: item.id as IdType, 
@@ -142,7 +144,7 @@ impl DataStore for SqliteDataStore {
                         paid_at: item.paid_at.map(|item| chrono::DateTime::<chrono::Utc>::from_timestamp(item, 0).unwrap().naive_utc()) 
                     }).collect()
                 },
-                (crate::data::storage::data_store::SearchOrderState::All, None) => sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders")
+                (crate::data::storage::data_store::SearchOrderState::All, None) => sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders LIMIT ?1", limit)
                     .fetch_all(&self.connection_pool)
                     .await?.into_iter().map(|item| Order { 
                         id: item.id as IdType, 
@@ -154,7 +156,7 @@ impl DataStore for SqliteDataStore {
                     }).collect(),
                 (crate::data::storage::data_store::SearchOrderState::All, Some(table_id)) => {
                       let id = table_id as i64;
-                    sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE table_id = ?1", id)
+                    sqlx::query!("SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE table_id = ?1 LIMIT ?2", id, limit)
                     .fetch_all(&self.connection_pool)
                     .await?.into_iter().map(|item| Order { 
                         id: item.id as IdType, 
@@ -185,10 +187,11 @@ impl DataStore for SqliteDataStore {
             let mut conn = self.connection_pool.acquire().await?;
             let table_id = args.table_id as i64;
             let item_id = args.item_id as i64;
+            let preperation_time = rand_chacha::ChaChaRng::from_seed(Default::default()).random_range(5..16) as i64;
             let created_at = chrono::Utc::now();
             let created_at_value: i64 = created_at.timestamp();
-            let test = sqlx::query!("INSERT INTO orders(table_id, item_id, time_to_prepare, created_at, paid_at) VALUES (?1, ?2, ?3, ?4, ?5)", table_id, item_id, 0, created_at_value, None::<i64>).execute(&mut *conn).await?;
-            Ok(Order { id: test.last_insert_rowid() as u64, table_id: args.table_id, item_id: args.item_id, time_to_prepare: 0, created_at: chrono::DateTime::from_timestamp(created_at_value, 0).unwrap().naive_utc(), paid_at: None })
+            let test = sqlx::query!("INSERT INTO orders(table_id, item_id, time_to_prepare, created_at, paid_at) VALUES (?1, ?2, ?3, ?4, ?5)", table_id, item_id, preperation_time, created_at_value, None::<i64>).execute(&mut *conn).await?;
+            Ok(Order { id: test.last_insert_rowid() as u64, table_id: args.table_id, item_id: args.item_id, time_to_prepare: preperation_time as u8, created_at: chrono::DateTime::from_timestamp(created_at_value, 0).unwrap().naive_utc(), paid_at: None })
         }.boxed()
     }
 
@@ -346,6 +349,12 @@ mod tests {
             })
             .await
             .unwrap();
+
+        assert_eq!(added_order.item_id, 106);
+        assert_eq!(added_order.table_id, 4);
+        assert!(added_order.time_to_prepare >= 5 || added_order.time_to_prepare <= 15);
+        assert_eq!(added_order.paid_at, None);
+
         let added_orders = db
             .clone()
             .add_orders(vec![
@@ -401,6 +410,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::Open,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -413,6 +423,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::Paid,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -425,6 +436,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -442,6 +454,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: None,
+                limit: None,
             })
             .await
             .unwrap();
@@ -455,6 +468,7 @@ mod tests {
             .remove_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -467,6 +481,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: None,
+                limit: None,
             })
             .await
             .unwrap();

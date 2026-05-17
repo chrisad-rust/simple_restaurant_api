@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NOT NULL",
+  "query": "SELECT id, table_id, item_id, time_to_prepare, created_at, paid_at FROM orders WHERE paid_at IS NOT NULL LIMIT ?1",
   "describe": {
     "columns": [
       {
@@ -35,7 +35,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -46,5 +46,5 @@
       true
     ]
   },
-  "hash": "c21ea73708f8a0bb7c63e4921e02bb5aeabfda5a43f232cce27329c7ec22c514"
+  "hash": "02b7f5acb50dfd3c70c2a0de441094c65062d34d28a461f955ff299e95147d3a"
 }

@@ -19,6 +19,7 @@ pub enum SearchOrderState {
 pub struct SearchOrder {
     pub order_state: SearchOrderState,
     pub table_id: Option<IdType>,
+    pub limit: Option<u64>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, apistos::ApiComponent, schemars::JsonSchema)]

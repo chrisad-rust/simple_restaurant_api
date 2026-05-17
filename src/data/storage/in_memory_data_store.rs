@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use futures::FutureExt;
+use rand::{RngExt, SeedableRng};
 use tokio::sync::RwLock;
 
 use crate::data::objects::item::Item;
@@ -62,6 +63,7 @@ impl DataStore for InMemoryDataStore {
     ) -> BoxFuture<'a, Result<Vec<Order>, Error>> {
         async move {
             let orders_guard = self.orders.read().await;
+            let limit = args.limit.unwrap_or(100) as usize;
             let orders_iter = orders_guard
                 .values()
                 .filter(|item| match &args.order_state {
@@ -72,10 +74,11 @@ impl DataStore for InMemoryDataStore {
             if let Some(table_id) = args.table_id {
                 return Ok(orders_iter
                     .filter(|item| item.table_id == table_id)
+                    .take(limit)
                     .cloned()
                     .collect());
             }
-            Ok(orders_iter.cloned().collect())
+            Ok(orders_iter.take(limit).cloned().collect())
         }
         .boxed()
     }
@@ -100,11 +103,13 @@ impl DataStore for InMemoryDataStore {
             }
 
             let mut orders_guard = self.orders.write().await;
+            let preperation_time =
+                rand_chacha::ChaChaRng::from_seed(Default::default()).random_range(5..16) as i64;
             let new_order = Order {
                 id: orders_guard.len() as IdType,
                 table_id: args.table_id,
                 item_id: args.item_id,
-                time_to_prepare: 0,
+                time_to_prepare: preperation_time as u8,
                 created_at: chrono::Utc::now().naive_utc(),
                 paid_at: None,
             };
@@ -138,13 +143,14 @@ impl DataStore for InMemoryDataStore {
             }
 
             let mut new_orders = Vec::with_capacity(args.len());
+            let mut rand = rand_chacha::ChaChaRng::from_seed(Default::default());
 
             for arg in args {
                 let new_order = Order {
                     id: orders_guard.len() as IdType,
                     table_id: arg.table_id,
                     item_id: arg.item_id,
-                    time_to_prepare: 0,
+                    time_to_prepare: rand.random_range(5..16) as u8,
                     created_at: chrono::Utc::now().naive_utc(),
                     paid_at: None,
                 };
@@ -368,6 +374,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::Open,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -380,6 +387,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::Paid,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -392,6 +400,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -409,6 +418,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: None,
+                limit: None,
             })
             .await
             .unwrap();
@@ -422,6 +432,7 @@ mod tests {
             .remove_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: Some(4),
+                limit: None,
             })
             .await
             .unwrap();
@@ -434,6 +445,7 @@ mod tests {
             .get_orders(SearchOrder {
                 order_state: SearchOrderState::All,
                 table_id: None,
+                limit: None,
             })
             .await
             .unwrap();

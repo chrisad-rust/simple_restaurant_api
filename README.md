@@ -19,10 +19,9 @@
 | The application MUST, upon query request, show all items for a specified table number. | Add service endpoints to query "Orders" with table id as search option. |
 | The application MUST, upon query request, show a specified item for a specified table number. | Implement "Item" datatype with "id", "name", "description". Add service endpoints to query "Item".|
 | The application MUST accept at least 10 simultaneous incoming add/remove/query requests. | Actix web can handle by default max connections up to 256 with a thread count of 512 divided by std::thread::available_parallelism(). |
-| The client MAY limit the number of specific tables in its requests to a finite set (at least 100). | |
-| The application MAY assign a length of time for the item to prepare as a random time between 5-15 minutes. |  |
-| The application MAY keep the length of time for the item to prepare static (in other words, the time does not have 
-to be counted down in real time, only upon item creation and then removed with the item upon item deletion). ||
+| The client MAY limit the number of specific tables in its requests to a finite set (at least 100). | Limit added to order search query with a default of 100. |
+| The application MAY assign a length of time for the item to prepare as a random time between 5-15 minutes. | Set random number at order creation. |
+| The application MAY keep the length of time for the item to prepare static (in other words, the time does not have to be counted down in real time, only upon item creation and then removed with the item upon item deletion). | The time when the preperation is done can be calculated by the created_at time + minutes(preperation_time). |
 
 ## Assumptions
 - The service runs in an private network and does not require TLS (HTTPS).
