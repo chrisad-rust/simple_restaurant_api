@@ -16,7 +16,7 @@ async fn main() -> std::io::Result<()> {
     let subscriber = tracing_subscriber::fmt()
         .compact()
         .with_level(true)
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(tracing::Level::ERROR)
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber)
         .expect("Subscriber should be configurable!");
-    env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("error"));
 
     HttpServer::new(move || {
         let api_spec = Spec {

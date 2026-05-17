@@ -1,7 +1,7 @@
 use crate::{
     data::{
         objects::order::Order,
-        storage::data_store::{CreateOrder, DataStorage, DataStore},
+        storage::data_store::{CreateOrder, DataStorage},
     },
     utils::errors::Error,
 };

@@ -19,6 +19,10 @@ impl SqliteDataStore {
             connection_pool: sqlx::SqlitePool::connect_lazy(db_url.as_str())?,
         })
     }
+    #[must_use]
+    pub fn from_pool(pool: sqlx::SqlitePool) -> Self {
+        Self { connection_pool: pool }
+    }
 }
 
 impl DataStore for SqliteDataStore {
@@ -175,7 +179,7 @@ impl DataStore for SqliteDataStore {
     > {
         async move {
             if args.table_id < 1 {
-                return Err(crate::utils::errors::Error::Conflict(format!("Table ID is out of range, should be higher that 1.")));
+                return Err(crate::utils::errors::Error::InvalidArgument(format!("Table ID is out of range, should be higher that 1.")));
             }
 
             let mut conn = self.connection_pool.acquire().await?;

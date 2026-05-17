@@ -124,7 +124,7 @@ impl DataStore for InMemoryDataStore {
 
             for arg in args.iter() {
                 if arg.table_id < 1 {
-                    return Err(crate::utils::errors::Error::Conflict(format!(
+                    return Err(crate::utils::errors::Error::InvalidArgument(format!(
                         "Table ID is out of range, should be higher that 1."
                     )));
                 }
