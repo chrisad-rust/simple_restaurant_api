@@ -7,6 +7,8 @@ use crate::data::storage::data_store::IdType;
     Eq,
     serde::Serialize,
     serde::Deserialize,
+    apistos::ApiComponent,
+    schemars::JsonSchema,
 )]
 pub struct Item {
     pub id: IdType,

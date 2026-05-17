@@ -9,6 +9,13 @@ pub mod data {
         pub mod sqlite_data_store;
     }
 }
+pub mod services {
+    pub mod add_orders;
+    pub mod get_items;
+    pub mod get_orders;
+    pub mod pay_orders;
+    pub mod remove_orders;
+}
 pub mod utils {
     pub mod errors;
     pub mod futures;

@@ -13,3 +13,11 @@ tracing = { version = "0.1" }
 tokio = { version = "1.52", features = ["full"] }
 futures = { version = "0.3" }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+actix-web = { version = "4.13" }
+actix-cors = { version = "0.7" }
+apistos = { version = "0.6", features = ["swagger-ui"] }
+schemars = { package = "apistos-schemars", version = "0.8" }
+tracing-actix-web = { version = "0.7" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+log = { version = "0.4" }
+env_logger = { version = "0.11" }

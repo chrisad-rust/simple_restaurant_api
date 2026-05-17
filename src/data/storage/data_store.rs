@@ -6,7 +6,7 @@ use crate::utils::futures::{Arc, BoxFuture};
 pub type IdType = u64;
 
 #[derive(
-    Default, serde::Serialize, serde::Deserialize,
+    Default, serde::Serialize, serde::Deserialize, apistos::ApiComponent, schemars::JsonSchema,
 )]
 pub enum SearchOrderState {
     #[default]
@@ -15,13 +15,13 @@ pub enum SearchOrderState {
     All = 2,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, apistos::ApiComponent, schemars::JsonSchema)]
 pub struct SearchOrder {
     pub order_state: SearchOrderState,
     pub table_id: Option<IdType>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, apistos::ApiComponent, schemars::JsonSchema)]
 pub struct CreateOrder {
     pub table_id: IdType,
     pub item_id: IdType,
@@ -55,7 +55,7 @@ pub trait DataStore: 'static + Send + Sync {
     ) -> BoxFuture<'a, Result<Vec<Order>, Error>>;
 
     #[must_use]
-    fn paid_order<'a>(
+    fn pay_order<'a>(
         self: Arc<Self>,
         order_id: IdType,
     ) -> BoxFuture<'a, Result<Option<Order>, Error>>;

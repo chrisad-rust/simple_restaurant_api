@@ -13,7 +13,7 @@ impl SqliteDataStore {
     #[must_use]
     pub fn new() -> Result<Self, sqlx::Error> {
         let db_url =
-            std::env::var("DATABASE_URL").unwrap_or(format!("sqlite:default.db"));
+            std::env::var("DATABASE_URL").unwrap_or(format!("sqlite:production.db"));
 
         Ok(Self {
             connection_pool: sqlx::SqlitePool::connect_lazy(db_url.as_str())?,
@@ -213,7 +213,7 @@ impl DataStore for SqliteDataStore {
         }.boxed()
     }
 
-    fn paid_order<'a>(
+    fn pay_order<'a>(
         self: crate::utils::futures::Arc<Self>,
         order_id: u64,
     ) -> crate::utils::futures::BoxFuture<
@@ -386,7 +386,7 @@ mod tests {
 
         let paid_order = db
             .clone()
-            .paid_order(added_orders.first().map(|item| item.id.clone()).unwrap())
+            .pay_order(added_orders.first().map(|item| item.id.clone()).unwrap())
             .await
             .unwrap();
 

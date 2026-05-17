@@ -157,7 +157,7 @@ impl DataStore for InMemoryDataStore {
         .boxed()
     }
 
-    fn paid_order<'a>(
+    fn pay_order<'a>(
         self: Arc<Self>,
         order_id: IdType,
     ) -> BoxFuture<'a, Result<Option<Order>, Error>> {
@@ -357,7 +357,7 @@ mod tests {
 
         let paid_order = db
             .clone()
-            .paid_order(added_orders.first().map(|item| item.id.clone()).unwrap())
+            .pay_order(added_orders.first().map(|item| item.id.clone()).unwrap())
             .await
             .unwrap();
 

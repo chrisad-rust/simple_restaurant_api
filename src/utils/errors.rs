@@ -1,4 +1,5 @@
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, apistos::ApiErrorComponent)]
+#[openapi_error(status(code = 400), status(code = 409), status(code = 503))]
 pub enum Error {
     InvalidArgument(String),
     Conflict(String),
@@ -13,6 +14,16 @@ impl std::fmt::Display for Error {
             Error::InvalidArgument(message) => write!(f, "{}", message),
             Error::Conflict(message) => write!(f, "{}", message),
             Error::Database(message) => write!(f, "{}", message),
+        }
+    }
+}
+
+impl actix_web::ResponseError for Error {
+    fn status_code(&self) -> actix_web::http::StatusCode {
+        match self {
+            Error::InvalidArgument(_) => actix_web::http::StatusCode::BAD_REQUEST,
+            Error::Conflict(_) => actix_web::http::StatusCode::CONFLICT,
+            Error::Database(_) => actix_web::http::StatusCode::SERVICE_UNAVAILABLE,
         }
     }
 }

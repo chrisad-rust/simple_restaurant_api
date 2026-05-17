@@ -27,11 +27,18 @@ to be counted down in real time, only upon item creation and then removed with t
 ## Assumptions
 - The service runs in an private network and does not require TLS (HTTPS).
 
-## Setup and Run Application
+## Setup and Run 
+
+To run the 'cargo sqlx' commands, you need to install the sqlx-cli see https://github.com/launchbadge/sqlx/tree/main/sqlx-cli. 
+
+>If the error/warning "set `DATABASE_URL` to use query macros online, or run `cargo sqlx prepare` to update the query cache" occured.
+> You can do as described or run the application/tests again, then it disappear as well.
+
+### Application
 
 ```bash
 # Set test database
-export DATABASE_URL="sqlite:default.db"
+export DATABASE_URL="sqlite:production.db"
 
 # (Optional if db not exists) create db if not exists
 cargo sqlx db create
@@ -43,7 +50,7 @@ cargo sqlx migrate run
 cargo run
 ```
 
-## Setup and Run Tests
+### Tests
 ```bash
 # Set test database
 export DATABASE_URL="sqlite:test.db"
@@ -57,3 +64,8 @@ cargo sqlx migrate run
 # Run tests single threaded to reuse the test database for all tests
 cargo test -- --test-threads=1
 ```
+
+# Use Client
+
+You can use any openapi client as you whish with the schema "http://localhost:8080/docs/openapi.json".
+Or you open the url http://localhost:8080/docs with a browser, there you get a selfhosted openapi client. 
