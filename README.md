@@ -27,13 +27,33 @@ to be counted down in real time, only upon item creation and then removed with t
 ## Assumptions
 - The service runs in an private network and does not require TLS (HTTPS).
 
-## Run
+## Setup and Run Application
 
 ```bash
+# Set test database
+export DATABASE_URL="sqlite:default.db"
+
+# (Optional if db not exists) create db if not exists
+cargo sqlx db create
+
+# (Optional if db not exists) Run sql migrations
+cargo sqlx migrate run
+
+# Run application
 cargo run
 ```
 
-## Test
+## Setup and Run Tests
 ```bash
-cargo test
+# Set test database
+export DATABASE_URL="sqlite:test.db"
+
+# (Optional if db not exists) create db
+cargo sqlx db create
+
+# (Optional if db not exists) Run sql migrations
+cargo sqlx migrate run
+
+# Run tests single threaded to reuse the test database for all tests
+cargo test -- --test-threads=1
 ```
