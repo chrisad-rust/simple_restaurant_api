@@ -171,7 +171,9 @@ impl DataStore for InMemoryDataStore {
             let mut orders_guard = self.orders.write().await;
 
             if let Some(order) = orders_guard.get_mut(&order_id) {
-                order.paid_at = Some(chrono::Utc::now().naive_utc());
+                if order.paid_at.is_none() {
+                    order.paid_at = Some(chrono::Utc::now().naive_utc());
+                }
                 return Ok(Some(order.clone()));
             }
             Ok(None)

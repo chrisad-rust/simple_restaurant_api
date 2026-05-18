@@ -232,7 +232,7 @@ impl DataStore for SqliteDataStore {
             let id = order_id as i64;
             let paid_at = chrono::Utc::now();
             let paid_at_value = Some(paid_at.timestamp());
-            sqlx::query!("UPDATE orders SET paid_at = ?1 WHERE id = ?2", paid_at_value, id).execute(&mut *conn).await?;
+            sqlx::query!("UPDATE orders SET paid_at = ?1 WHERE id = ?2 AND paid_at IS NULL", paid_at_value, id).execute(&mut *conn).await?;
             return self.clone().get_order(order_id).await;
         }.boxed()
     }
