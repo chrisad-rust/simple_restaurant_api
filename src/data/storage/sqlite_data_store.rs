@@ -203,19 +203,35 @@ impl DataStore for SqliteDataStore {
         Result<Vec<crate::data::objects::order::Order>, crate::utils::errors::Error>,
     > {
         async move {
+            let mut transaction = self.connection_pool.begin().await?;
+
             let mut orders = Vec::with_capacity(args.len());
 
-            for arg in args {
-                match self.clone().add_order(arg).await {
-                    Ok(order) => orders.push(order),
-                    Err(error) => {
-                        for order in orders {
-                            self.clone().remove_order(order.id).await?;
-                        }
-                        return Err(error);
-                    }
+            for arg in args.iter() {
+                if arg.table_id < 1 {
+                    return Err(crate::utils::errors::Error::InvalidArgument(format!("Table ID is out of range, should be higher that 1.")));
                 }
+
+                let table_id = arg.table_id as i64;
+                let item_id = arg.item_id as i64;
+                let preperation_time = rand_chacha::ChaChaRng::from_seed(Default::default()).random_range(5..16) as i64;
+                let created_at = chrono::Utc::now();
+                let created_at_value: i64 = created_at.timestamp();
+                let test = sqlx::query!(
+                    "INSERT INTO orders(table_id, item_id, time_to_prepare, created_at, paid_at) VALUES (?1, ?2, ?3, ?4, ?5)", 
+                    table_id, item_id, preperation_time, created_at_value, None::<i64>
+                ).execute(&mut *transaction).await?;
+                orders.push(Order { 
+                    id: test.last_insert_rowid() as u64, 
+                    table_id: arg.table_id, 
+                    item_id: arg.item_id, 
+                    time_to_prepare: preperation_time as u8, 
+                    created_at: chrono::DateTime::from_timestamp(created_at_value, 0).unwrap().naive_utc(), 
+                    paid_at: None 
+                });
             }
+            transaction.commit().await?;
+
             Ok(orders)
         }.boxed()
     }
@@ -261,10 +277,14 @@ impl DataStore for SqliteDataStore {
     {
         async move {
             let orders = self.clone().get_orders(args).await?;
+            let mut transaction = self.connection_pool.begin().await?;
 
             for order in orders.iter() {
-                self.clone().remove_order(order.id).await?;
+                let id = order.id as i64;
+                sqlx::query!("delete from orders WHERE id = ?1", id).execute(&mut *transaction).await?;
             }
+            transaction.commit().await?;
+
             Ok(orders)
         }.boxed()      
     }

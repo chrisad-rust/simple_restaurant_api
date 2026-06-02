@@ -27,6 +27,12 @@ async fn main() -> std::io::Result<()> {
         .expect("Subscriber should be configurable!");
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("error"));
 
+    let datastore = DataStorage {
+        store: simple_restaurant_api::utils::futures::Arc::new(
+            SqliteDataStore::new().expect("Database should be exist."),
+        ),
+    };
+
     HttpServer::new(move || {
         let api_spec = Spec {
             info: Info {
@@ -34,11 +40,6 @@ async fn main() -> std::io::Result<()> {
                 ..Default::default()
             },
             ..Default::default()
-        };
-        let datastore = DataStorage {
-            store: simple_restaurant_api::utils::futures::Arc::new(
-                SqliteDataStore::new().expect("Database should be exist."),
-            ),
         };
         App::new()
             .wrap(tracing_actix_web::TracingLogger::default())
@@ -51,7 +52,7 @@ async fn main() -> std::io::Result<()> {
                     .send_wildcard(),
             )
             .document(api_spec)
-            .app_data(Data::new(datastore))
+            .app_data(Data::new(datastore.clone()))
             .service(
                 scope("/api/v1")
                     .service(

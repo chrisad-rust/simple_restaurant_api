@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::AtomicU64;
 
 use futures::FutureExt;
 use rand::{RngExt, SeedableRng};
@@ -12,6 +13,7 @@ use crate::utils::futures::{Arc, BoxFuture};
 
 #[derive(Clone)]
 pub struct InMemoryDataStore {
+    next_id: Arc<AtomicU64>,
     items: Arc<RwLock<BTreeMap<IdType, Item>>>,
     orders: Arc<RwLock<BTreeMap<IdType, Order>>>,
 }
@@ -20,6 +22,7 @@ impl InMemoryDataStore {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            next_id: Arc::new(AtomicU64::new(1)),
             items: Arc::new(RwLock::new(BTreeMap::new())),
             orders: Arc::new(RwLock::new(BTreeMap::new())),
         }
@@ -105,8 +108,11 @@ impl DataStore for InMemoryDataStore {
             let mut orders_guard = self.orders.write().await;
             let preperation_time =
                 rand_chacha::ChaChaRng::from_seed(Default::default()).random_range(5..16) as i64;
+            let new_id = self
+                .next_id
+                .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
             let new_order = Order {
-                id: orders_guard.len() as IdType,
+                id: new_id as IdType,
                 table_id: args.table_id,
                 item_id: args.item_id,
                 time_to_prepare: preperation_time as u8,
@@ -146,8 +152,11 @@ impl DataStore for InMemoryDataStore {
             let mut rand = rand_chacha::ChaChaRng::from_seed(Default::default());
 
             for arg in args {
+                let new_id = self
+                    .next_id
+                    .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
                 let new_order = Order {
-                    id: orders_guard.len() as IdType,
+                    id: new_id as IdType,
                     table_id: arg.table_id,
                     item_id: arg.item_id,
                     time_to_prepare: rand.random_range(5..16) as u8,
@@ -204,7 +213,7 @@ impl DataStore for InMemoryDataStore {
                 let remove_by_table_cond = args
                     .table_id
                     .as_ref()
-                    .is_some_and(|table_id| value.table_id.eq(table_id));
+                    .is_none_or(|table_id| value.table_id.eq(table_id));
                 let remove_by_state_cond = match args.order_state {
                     super::data_store::SearchOrderState::Open => value.paid_at.is_none(),
                     super::data_store::SearchOrderState::Paid => value.paid_at.is_some(),
@@ -227,7 +236,11 @@ impl DataStore for InMemoryDataStore {
 mod tests {
     use crate::data::storage::data_store::{CreateOrder, SearchOrder, SearchOrderState};
 
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
+
     use super::*;
+    use std::time::{Duration, Instant};
 
     #[tokio::test]
     async fn test_items() {
@@ -454,5 +467,64 @@ mod tests {
 
         assert_eq!(get_all_orders_after_remove.len(), 1);
         assert_eq!(get_all_orders_after_remove.first(), added_orders.last());
+    }
+
+    fn random_keys(n: usize) -> Vec<u64> {
+        let mut keys = Vec::new();
+        let mut rng = ChaChaRng::from_seed(Default::default());
+        keys.resize_with(n, || rng.random::<u64>());
+        keys
+    }
+
+    fn measure_insert(keys: impl IntoIterator<Item = u64>) -> (BTreeMap<u64, u64>, Duration) {
+        let mut map = BTreeMap::new();
+        let start = Instant::now();
+
+        for key in keys {
+            map.insert(key, key);
+        }
+
+        (map, start.elapsed())
+    }
+
+    fn measure_get(map: &BTreeMap<u64, u64>, keys: impl IntoIterator<Item = u64>) -> Duration {
+        let start = Instant::now();
+
+        for key in keys {
+            map.get(&key);
+        }
+
+        start.elapsed()
+    }
+
+    #[test]
+    fn test_btree_serial_numb_insert_performance() {
+        let n = 100_000usize;
+        let rand_keys = random_keys(n);
+
+        let (seq_map, seq_insert_duration) = measure_insert(0..n as u64);
+        let (rand_map, rand_insert_duration) = measure_insert(rand_keys.clone());
+
+        assert_eq!(seq_map.len(), n);
+        assert_eq!(rand_map.len(), n);
+
+        // inserting needs more time with squential keys beacuse of self-balancing efforts.
+        tracing::debug!(
+            "{}ms > {}ms",
+            rand_insert_duration.as_millis(),
+            seq_insert_duration.as_millis()
+        );
+        assert!(rand_insert_duration < seq_insert_duration);
+
+        let seq_get_duration = measure_get(&seq_map, 0..n as u64);
+        let rand_get_duration = measure_get(&rand_map, rand_keys);
+
+        // looking up data is faster because of a better balanced tree
+        tracing::debug!(
+            "{}ms > {}ms",
+            rand_get_duration.as_millis(),
+            seq_get_duration.as_millis()
+        );
+        assert!(rand_get_duration > seq_get_duration);
     }
 }
